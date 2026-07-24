@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Seller AI — Recomendação Inteligente de Produtos</title>
+  <meta name="description" content="Consulte um CNPJ e receba os 5 produtos com maior probabilidade de venda, combinando regras de negócio, score e IA generativa." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="assets/css/main.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar__brand">
+      <span class="dot"></span>
+      Smart Seller <span class="muted">AI</span>
+    </div>
+
+    <nav aria-label="Navegação principal">
+      <a class="btn btn-ghost" href="dashboard.html"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+      <a class="btn btn-ghost" href="products.html"><i class="fa-solid fa-boxes-stacked"></i> Produtos</a>
+    </nav>
+
+    <div id="auth-logged-out">
+      <button id="btn-login-google" class="btn btn-primary">Entrar com Google</button>
+    </div>
+    <div id="auth-logged-in" hidden>
+      <span id="user-name" class="muted"></span>
+      <span id="user-role" class="badge"></span>
+      <button id="btn-logout" class="btn btn-ghost">Sair</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="consulta-panel">
+      <h1>Qual cliente você vai visitar hoje?</h1>
+      <p class="muted">Informe o CNPJ e receba os 5 produtos com maior chance de fechar pedido.</p>
+
+      <div class="consulta-form">
+        <label class="visually-hidden" for="input-cnpj">CNPJ</label>
+        <input
+          id="input-cnpj"
+          type="text"
+          inputmode="numeric"
+          placeholder="00.000.000/0000-00"
+          maxlength="18"
+          autocomplete="off"
+        />
+        <button id="btn-consultar" class="btn btn-primary">
+          <i class="fa-solid fa-magnifying-glass"></i> Consultar
+        </button>
+      </div>
+
+      <p id="status-message" role="status" aria-live="polite"></p>
+    </section>
+
+    <section id="company-card" class="company-card" hidden></section>
+
+    <section id="recommendations" aria-label="Recomendações de produtos"></section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
