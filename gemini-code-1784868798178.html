@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integração Vercel Serverless</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+    .card { border: 1px solid #ccc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; }
+    button { background: #0070f3; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #0051a2; }
+    pre { background: #f4f4f4; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+
+  <h1>Frontend + Backend Serverless</h1>
+
+  <div class="card">
+    <h3>1. Testar Requisição GET</h3>
+    <button onclick="buscarDados()">Buscar Mensagem</button>
+  </div>
+
+  <div class="card">
+    <h3>2. Testar Requisição POST</h3>
+    <input type="text" id="nomeInput" placeholder="Digite seu nome">
+    <button onclick="enviarDados()">Enviar</button>
+  </div>
+
+  <h3>Resposta do Servidor:</h3>
+  <pre id="resultado">Clique em um dos botões acima para testar...</pre>
+
+  <script>
+    // Endpoint relativo funcionará automaticamente na Vercel
+    const API_URL = '/api/mensagem';
+
+    async function buscarDados() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        document.getElementById('resultado').innerText = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('resultado').innerText = 'Erro ao buscar dados: ' + err.message;
+      }
+    }
+
+    async function enviarDados() {
+      const nome = document.getElementById('nomeInput').value;
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: nome })
+        });
+        const data = await res.json();
+        document.getElementById('resultado').innerText = JSON.stringify(data, null, 2);
+      } catch (err) {
+        document.getElementById('resultado').innerText = 'Erro ao enviar dados: ' + err.message;
+      }
+    }
+  </script>
+
+</body>
+</html>
