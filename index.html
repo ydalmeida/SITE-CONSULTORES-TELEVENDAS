@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Seller AI</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<!-- ═══════════ LOGIN (identificação local do consultor — ver js/auth.js) ═══════════ -->
+<div id="loginGate" class="login-gate">
+  <div class="login-box">
+    <div class="brand">Smart Seller <span>AI</span></div>
+    <p class="login-sub">Recomendação inteligente de produtos por CNPJ — regras de negócio + score + IA generativa.</p>
+    <form id="formLogin">
+      <div class="field">
+        <label>Seu nome</label>
+        <input id="loginNome" type="text" placeholder="Ex.: Ana Souza" required>
+      </div>
+      <div class="field">
+        <label>Perfil</label>
+        <select id="loginPapel">
+          <option value="consultor">Consultor comercial</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-arrow-right-to-bracket"></i> Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════ APP ═══════════ -->
+<div id="appShell" class="app-shell">
+  <nav class="topbar">
+    <div class="brand"><i class="fa-solid fa-brain" style="color:var(--accent)"></i> Smart Seller <span>AI</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="user-chip">
+      <div style="text-align:right"><strong id="userNome"></strong><br><span id="userPapel"></span></div>
+      <button class="btn-icon" id="btnLogout" title="Sair"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <div class="nav-item active" data-tab="recomendacao"><i class="fa-solid fa-magnifying-glass"></i> Recomendação</div>
+    <div class="nav-item admin-only" data-tab="produtos"><i class="fa-solid fa-boxes-stacked"></i> Produtos</div>
+    <div class="nav-item" data-tab="dashboard"><i class="fa-solid fa-chart-line"></i> Dashboard</div>
+    <div class="nav-item" data-tab="historico"><i class="fa-solid fa-clock-rotate-left"></i> Histórico</div>
+    <div class="nav-item admin-only" data-tab="configuracoes"><i class="fa-solid fa-sliders"></i> Configurações</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ── ABA: RECOMENDAÇÃO ── -->
+    <section id="tab-recomendacao" class="tab-panel active">
+      <div class="page-head">
+        <h1>Recomendação inteligente por CNPJ</h1>
+        <p>Informe o CNPJ do cliente: o sistema consulta os dados públicos, calcula a aderência com todo o catálogo (motor de regras) e a IA escolhe e justifica os 5 melhores produtos entre os pré-selecionados.</p>
+      </div>
+
+      <form id="formConsulta" class="consulta-form">
+        <input id="cnpjInput" type="text" placeholder="00.000.000/0000-00" inputmode="numeric" maxlength="18" required>
+        <button type="submit" class="btn btn-accent2"><i class="fa-solid fa-play"></i> Consultar</button>
+      </form>
+      <div id="statusConsulta" class="status-consulta"></div>
+
+      <div id="empresaCard" class="empresa-card" style="display:none"></div>
+
+      <div id="recomendacoesWrap" style="display:none">
+        <h2 style="font-size:14px;margin-bottom:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Top 5 produtos recomendados</h2>
+        <div id="recomendacoesGrid" class="reco-grid"></div>
+      </div>
+    </section>
+
+    <!-- ── ABA: PRODUTOS ── -->
+    <section id="tab-produtos" class="tab-panel">
+      <div class="page-head">
+        <h1>Cadastro de produtos</h1>
+        <p>CRUD completo do catálogo. Os campos de CNAE, segmentos, estados e região alimentam diretamente o motor de recomendação.</p>
+      </div>
+
+      <div class="toolbar">
+        <input id="filtroBusca" type="text" placeholder="🔎 Buscar por nome, marca, palavra-chave…" style="min-width:220px">
+        <select id="filtroCategoria"><option value="">Todas</option></select>
+        <select id="filtroMarca"><option value="">Todas</option></select>
+        <input id="filtroSegmento" type="text" placeholder="Segmento…" style="width:130px">
+        <select id="filtroEstado">
+          <option value="">Todos UF</option>
+          <option>AC</option><option>AL</option><option>AP</option><option>AM</option><option>BA</option><option>CE</option>
+          <option>DF</option><option>ES</option><option>GO</option><option>MA</option><option>MT</option><option>MS</option>
+          <option>MG</option><option>PA</option><option>PB</option><option>PR</option><option>PE</option><option>PI</option>
+          <option>RJ</option><option>RN</option><option>RS</option><option>RO</option><option>RR</option><option>SC</option>
+          <option>SP</option><option>SE</option><option>TO</option>
+        </select>
+        <select id="filtroStatus"><option value="">Todos status</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select>
+        <div class="toolbar-spacer"></div>
+        <label class="btn btn-ghost" style="cursor:pointer">
+          <i class="fa-solid fa-file-import"></i> Importar (JSON/CSV/XLSX)
+          <input id="inputImportar" type="file" accept=".json,.csv,.xlsx,.xls" style="display:none">
+        </label>
+        <button id="btnExportarJSON" class="btn btn-ghost"><i class="fa-solid fa-file-export"></i> Exportar JSON</button>
+        <button id="btnNovoProduto" class="btn btn-accent2"><i class="fa-solid fa-plus"></i> Novo produto</button>
+      </div>
+
+      <p id="produtosContagem" class="muted small" style="margin-bottom:8px"></p>
+      <div class="table-card">
+        <table>
+          <thead><tr><th></th><th>Produto</th><th>Categoria</th><th>Preço</th><th>Margem</th><th>Prioridade</th><th>Status</th><th></th></tr></thead>
+          <tbody id="produtosTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── ABA: DASHBOARD ── -->
+    <section id="tab-dashboard" class="tab-panel">
+      <div class="page-head">
+        <h1>Dashboard</h1>
+        <p>Consultas realizadas, produtos mais recomendados/vendidos, distribuição geográfica e taxa de conversão.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi-card"><div class="kpi-val" id="kpiConsultas">0</div><div class="kpi-label">Consultas realizadas</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpiVendidos">0</div><div class="kpi-label">Produtos vendidos</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpiRecusados">0</div><div class="kpi-label">Produtos recusados</div></div>
+        <div class="kpi-card"><div class="kpi-val" id="kpiConversao">0%</div><div class="kpi-label">Taxa de conversão</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-panel"><h3>Produtos mais recomendados</h3><canvas id="chartRecomendados"></canvas></div>
+        <div class="chart-panel"><h3>Consultas por estado</h3><canvas id="chartEstados"></canvas></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-panel"><h3>Vendidos vs. recusados por produto</h3><canvas id="chartVendaRecusa"></canvas></div>
+        <div class="chart-panel"><h3>Taxa de conversão geral</h3><canvas id="chartConversao"></canvas></div>
+      </div>
+      <div class="rank-grid">
+        <div class="rank-box"><h3>Ranking de cidades</h3><div id="rankingCidades"></div></div>
+        <div class="rank-box"><h3>Ranking de consultores</h3><div id="rankingConsultores"></div></div>
+      </div>
+    </section>
+
+    <!-- ── ABA: HISTÓRICO ── -->
+    <section id="tab-historico" class="tab-panel">
+      <div class="page-head">
+        <h1>Histórico de consultas</h1>
+        <p>Toda consulta realizada fica registrada aqui — empresa, produtos sugeridos, consultor e data.</p>
+      </div>
+      <div class="table-card">
+        <table>
+          <thead><tr><th>Data</th><th>CNPJ</th><th>Empresa</th><th>Cidade/UF</th><th>Consultor</th><th>Produtos sugeridos</th></tr></thead>
+          <tbody id="historicoTbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── ABA: CONFIGURAÇÕES ── -->
+    <section id="tab-configuracoes" class="tab-panel">
+      <div class="page-head">
+        <h1>Configurações</h1>
+        <p>Ajuste os pesos do motor de recomendação e a integração com IA — sem precisar alterar código.</p>
+      </div>
+
+      <div class="config-card">
+        <h2>Pesos do motor de recomendação</h2>
+        <p class="desc">Cada critério pesa um % no score final (0–100) de cada produto. A soma ideal é 100% — se for diferente, o sistema normaliza automaticamente.</p>
+        <div id="pesosForm">
+          <div class="peso-row"><label>Compatibilidade de CNAE</label><input type="range" id="peso_cnae" min="0" max="100"><span class="peso-val" id="pesoVal_cnae"></span></div>
+          <div class="peso-row"><label>Compatibilidade de Segmento</label><input type="range" id="peso_segmento" min="0" max="100"><span class="peso-val" id="pesoVal_segmento"></span></div>
+          <div class="peso-row"><label>Compatibilidade Regional</label><input type="range" id="peso_regional" min="0" max="100"><span class="peso-val" id="pesoVal_regional"></span></div>
+          <div class="peso-row"><label>Prioridade Comercial</label><input type="range" id="peso_prioridade" min="0" max="100"><span class="peso-val" id="pesoVal_prioridade"></span></div>
+          <div class="peso-row"><label>Margem</label><input type="range" id="peso_margem" min="0" max="100"><span class="peso-val" id="pesoVal_margem"></span></div>
+          <div class="peso-row"><label>Produtos Relacionados</label><input type="range" id="peso_relacionados" min="0" max="100"><span class="peso-val" id="pesoVal_relacionados"></span></div>
+        </div>
+        <p class="soma-pesos">Soma atual: <strong id="somaPesos">100%</strong></p>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button id="btnSalvarPesos" class="btn btn-accent2"><i class="fa-solid fa-check"></i> Salvar pesos</button>
+          <button id="btnResetarPesos" class="btn btn-ghost"><i class="fa-solid fa-rotate-left"></i> Restaurar padrão</button>
+        </div>
+      </div>
+
+      <div class="config-card">
+        <h2>IA Sales Specialist</h2>
+        <p class="desc">Sem chave configurada, o app usa um gerador local por regras (funciona 100% offline de IA externa). Para usar um modelo de verdade, aponte para a Chat Completions API da OpenAI ou para o proxy em <code>/functions/openaiProxy.js</code> — a chave nunca deve ir para o navegador em produção; use o proxy.</p>
+        <form id="formIA">
+          <label class="checkbox-row"><input type="checkbox" id="iaAtivo"> Ativar geração via IA (senão, usa o motor de regras)</label>
+          <div class="field"><label>Endpoint (proxy recomendado)</label><input id="iaEndpoint" type="text" placeholder="https://seu-proxy.workers.dev/openai"></div>
+          <div class="field"><label>Chave de API (opcional se usar proxy)</label><input id="iaApiKey" type="password" placeholder="sk-…"></div>
+          <div class="field"><label>Modelo</label><input id="iaModelo" type="text" placeholder="gpt-4o-mini"></div>
+          <button type="submit" class="btn btn-accent2"><i class="fa-solid fa-check"></i> Salvar configuração de IA</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════ MODAL: PRODUTO ═══════════ -->
+<div class="modal-overlay" id="produtoModal">
+  <div class="modal-box">
+    <div class="modal-head"><h2 id="produtoModalTitulo">Novo produto</h2><button class="btn-icon" data-close-modal="produtoModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <form id="formProduto">
+      <div class="modal-body">
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <div class="field span2"><label>Nome*</label><input name="nome" required></div>
+          <div class="field"><label>Marca</label><input name="marca"></div>
+          <div class="field"><label>Ícone/Emoji</label><input name="imagem" placeholder="📦"></div>
+          <div class="field"><label>Categoria</label><input name="categoria"></div>
+          <div class="field"><label>Subcategoria</label><input name="subcategoria"></div>
+          <div class="field"><label>Preço (R$)</label><input name="preco" type="number" step="0.01" min="0"></div>
+          <div class="field"><label>Margem (%)</label><input name="margem" type="number" step="0.1" min="0"></div>
+          <div class="field span2"><label>Descrição</label><textarea name="descricao" rows="2"></textarea></div>
+          <div class="field span2"><label>Palavras-chave (separadas por vírgula)</label><input name="palavrasChave"></div>
+          <div class="field span2"><label>Segmentos atendidos (vírgula)</label><input name="segmentos" placeholder="restaurante, padaria, supermercado"></div>
+          <div class="field span2"><label>CNAEs compatíveis (vírgula, com ou sem pontuação)</label><input name="cnaesCompativeis" placeholder="4711302, 5611201"></div>
+          <div class="field"><label>Estados preferenciais (vírgula)</label><input name="estadosPreferenciais" placeholder="SP, MG"></div>
+          <div class="field"><label>Regiões (vírgula)</label><input name="regioes" placeholder="Sudeste, Sul"></div>
+          <div class="field"><label>Peso comercial (1–5)</label><input name="pesoComercial" type="number" min="1" max="5"></div>
+          <div class="field"><label>Prioridade (1–5)</label><input name="prioridade" type="number" min="1" max="5"></div>
+          <div class="field span2"><label>Produtos relacionados / cross-sell (IDs, vírgula)</label><input name="relacionados" placeholder="P001, P002"></div>
+          <div class="field"><label>Status</label><select name="status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="produtoModal">Cancelar</button>
+        <button type="submit" class="btn btn-accent2"><i class="fa-solid fa-check"></i> Salvar produto</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL: FEEDBACK (Learning Engine) ═══════════ -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head"><h2 id="feedbackTitulo">Registrar desfecho</h2><button class="btn-icon" data-close-modal="feedbackModal"><i class="fa-solid fa-xmark"></i></button></div>
+    <form id="formFeedback">
+      <div class="modal-body">
+        <div class="field"><label>Nome do cliente/contato</label><input id="feedbackCliente" placeholder="Opcional"></div>
+        <div class="field"><label id="feedbackMotivoLabel">Motivo</label><textarea id="feedbackMotivo" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-close-modal="feedbackModal">Cancelar</button>
+        <button type="submit" class="btn btn-accent2"><i class="fa-solid fa-check"></i> Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
