@@ -1,156 +1,188 @@
-# Smart Seller AI
+# Smart Seller — Recomendador de produtos por CNPJ
 
-Aplicação web para consultores comerciais: informe um CNPJ e receba uma
-recomendação inteligente dos 5 produtos com maior probabilidade de venda
-para aquele cliente — usando uma arquitetura híbrida de **regras de
-negócio + score + IA generativa**.
+> Inspirado no design do CDA (ARCOM), com estrutura nova, enxuta e focada no que importa:
+> **coloca o CNPJ, mostra o Top 5 produtos mais vendidos para aquele ramo + região.**
 
-## Arquitetura (4 motores independentes)
+## 🚀 Como rodar (30 segundos)
+
+1. Abra o arquivo `index.html` no navegador (Chrome, Edge, Firefox).
+2. Login:
+   - **Admin (acesso total)**: `diogokarita547@gmail.com` / `Arcom2026`
+   - **Consultor**: precisa ser criado pelo Admin (aba Configurações)
+3. Pronto. O sistema já vem com **30 produtos-exemplo** cadastrados.
+
+> ✅ O sistema **funciona 100% sem Firebase** (modo local). O login, permissões admin/consultor e o CRUD de produtos já estão operacionais. Quando você configurar seu próprio projeto Firebase, o login passa a ser em nuvem e os dados sincronizam entre dispositivos.
+
+## 🔐 Sistema de permissões (Admin × Consultor)
+
+| Função | Admin | Consultor |
+|---|:---:|:---:|
+| Consultar CNPJ e ver Top 5 | ✅ | ✅ |
+| Ver histórico de consultas | ✅ | ✅ |
+| Exportar PDF do Top 5 | ✅ | ✅ |
+| Ver lista de produtos | ✅ | ✅ |
+| **Cadastrar/editar/excluir produtos** | ✅ | ❌ |
+| **Criar novos usuários consultores** | ✅ | ❌ |
+| Configurar IA Groq, pesos do algoritmo, etc. | ✅ | ❌ |
+
+Quando um **Consultor** entra:
+- As abas **Produtos** e **Configurações** somem da sidebar
+- Aparece um aviso amarelo na tela de produtos
+- Os botões de **editar** e **excluir** somem da tabela
+- Mesmo se ele tentar abrir a URL da aba Config, o sistema redireciona pra Consulta
+
+## 👑 Primeiro acesso do Admin
+
+Na primeira vez que abrir o sistema, a conta `diogokarita547@gmail.com` será **criada automaticamente** no Firebase. Basta:
+
+1. Abrir `index.html`
+2. Digitar email: `diogokarita547@gmail.com`  | senha: `Arcom2026`
+3. Clicar **Entrar**
+4. Pronto — você está logado como Admin
+
+> ⚠️ **Importante**: Você precisa substituir as credenciais Firebase de exemplo (no `app.js`, constante `STATE.config.firebase`) pelas **credenciais reais do SEU projeto Firebase**. Do contrário, todos os usuários compartilharão o mesmo banco. Veja a seção "Firebase" abaixo.
+
+## 👥 Criar consultores
+
+Apenas o Admin pode criar consultores:
+
+1. Faça login como Admin
+2. Vá em **Configurações** (engrenagem no canto ou na sidebar)
+3. Role até **"Gerenciar usuários"**
+4. Preencha o email e a senha inicial (mínimo 6 caracteres)
+5. Clique **Criar consultor**
+6. Envie o email e a senha para o consultor por canal seguro
+
+⚠️ Ao criar um novo usuário, o Firebase desloga o Admin automaticamente (limitação do Firebase Auth).
+Faça login novamente com sua conta de Admin.
+
+## 🤖 IA Groq (gratuita)
+
+A IA é **opcional**. O Top 5 funciona perfeitamente sem ela — só mostra o motivo do algoritmo.
+
+Para ativar as explicações personalizadas:
+
+1. Vá em [console.groq.com](https://console.groq.com) → crie conta grátis
+2. **API Keys** → **Create API Key** → copie
+3. No sistema (como Admin), clique no ícone de robô 🤖 na barra superior
+4. Cole a chave e clique **Testar conexão**
+5. Pronto — as próximas consultas vêm com explicações geradas por IA
+
+**Por que Groq?** Tier gratuito generoso, sem cartão, modelos Llama 3.1 70B rápidos.
+
+## 🔥 Firebase (configurar seu próprio projeto)
+
+**⚠️ Antes de usar em produção, configure seu projeto Firebase:**
+
+1. Crie projeto em [console.firebase.google.com](https://console.firebase.google.com)
+2. Ative **Authentication → Email/Senha**
+3. Crie o app Web e copie as credenciais
+4. No Firestore, crie o banco em modo de produção (ou teste)
+5. Abra o arquivo `app.js` e substitua o bloco `STATE.config.firebase` (linha ~20) pelas suas credenciais:
+
+```js
+firebase: {
+  apiKey: "AIzaSy...",
+  authDomain: "seu-projeto.firebaseapp.com",
+  projectId: "seu-projeto",
+  storageBucket: "seu-projeto.appspot.com",
+  messagingSenderId: "123...",
+  appId: "1:123:web:abc"
+}
+```
+
+Estrutura no Firestore (criada automaticamente):
 
 ```
-CNPJ digitado
-   │
-   ▼
-┌─────────────────────┐   BrasilAPI (pública, sem chave)
-│ 1. Data Collector    │──────────────────────────────────
-│    js/api.js         │   Razão social, CNAE, cidade, UF,
-└─────────┬────────────┘   porte, situação, capital social…
-          ▼
-┌─────────────────────────────┐
-│ 2. Smart Recommendation     │  Calcula um score (0–100) para
-│    Engine                   │  TODOS os produtos do catálogo,
-│    js/recommendationEngine.js│  usando regras + pesos configuráveis.
-└─────────┬────────────────────┘  Devolve só os 20 melhores.
-          ▼
-┌─────────────────────────────┐
-│ 3. AI Sales Specialist       │  Recebe SÓ os 20 pré-selecionados
-│    js/aiEngine.js            │  (nunca o catálogo inteiro), escolhe
-└─────────┬────────────────────┘  e justifica os 5 melhores.
-          ▼
-┌─────────────────────────────┐
-│ 4. Learning Engine            │  Registra vendido/recusado por
-│    js/learningEngine.js       │  produto, cliente, cidade, consultor —
-└────────────────────────────── ┘  pronto para futura substituição por ML.
+usuarios/{uid}     → { email, role, criadoEm, criadoPor }
+dados/produtos     → { lista: [...], atualizadoPor, atualizadoEm }
+dados/historico    → { lista: [...], atualizadoEm }
 ```
 
-A IA **nunca** escolhe produtos entre milhares — ela só interpreta,
-justifica e reordena os top-20 que o motor de regras já filtrou. Isso
-reduz custo de IA, aumenta velocidade e evita recomendações fora do
-catálogo (a resposta da IA é sempre validada contra a lista original;
-qualquer ID que não esteja nos 20 é descartado).
-
-## Estrutura do projeto
+**Regras de segurança recomendadas (Firestore Rules):**
 
 ```
-/smart-seller-ai
-  /index.html
-  /assets/css/style.css
-  /js
-    app.js                 — controlador de UI / orquestração
-    api.js                 — Data Collector (consulta CNPJ)
-    recommendationEngine.js— Smart Recommendation Engine (o coração do sistema)
-    aiEngine.js             — AI Sales Specialist (+ fallback determinístico)
-    learningEngine.js       — Learning Engine
-    products.js             — CRUD do catálogo (localStorage)
-    history.js               — histórico de consultas
-    dashboard.js             — gráficos (Chart.js)
-    auth.js                  — sessão do consultor (ver nota abaixo)
-    utils.js                  — funções puras compartilhadas
-  /data/products.json       — catálogo semente (18 produtos de exemplo)
-  /functions/openaiProxy.js — proxy opcional para não expor a chave de IA
-  README.md
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    match /dados/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
 ```
 
-Zero build step: é só HTML + ES Modules + CSS. Funciona 100% em
-GitHub Pages (ou qualquer hospedagem estática) sem backend obrigatório.
+## ⚙️ Pesos do algoritmo (ajustáveis, só Admin)
 
-## Rodando localmente
+| Peso | Padrão | Quando ajustar |
+|---|---|---|
+| **CNAE compatível** | 40 | Se você atende nichos muito específicos |
+| **Região (UF)** | 25 | Se atende só algumas regiões |
+| **Prioridade comercial** | 15 | Se tem produtos estratégicos que quer empurrar |
+| **Margem de lucro** | 10 | Se quer priorizar rentabilidade |
+| **Palavras-chave** | 10 | Se o CNAE sozinho não é suficiente |
 
-Como o `index.html` usa `<script type="module">` e `fetch('./data/...')`,
-o navegador exige um servidor HTTP (não abre com `file://`). Qualquer um
-serve:
+## 📦 Cadastrar produtos (só Admin)
 
-```bash
-cd smart-seller-ai
-python3 -m http.server 8080
-# ou: npx serve .
+Aba **Produtos** → **Novo produto**:
+
+| Campo | Para que serve |
+|---|---|
+| **Código** | SKU interno |
+| **Nome, Marca, Categoria** | Identificação |
+| **Preço, Margem** | Comerciais (margem entra no score) |
+| **CNAEs compatíveis** | Lista separada por vírgula. Match exato, de classe (5 dígitos) ou subclasse (4 dígitos) |
+| **UFs compatíveis** | Vazio = atende todas |
+| **Palavras-chave** | Match contra a descrição CNAE do cliente |
+| **Descrição** | Usada pela IA Groq para gerar a frase de venda |
+
+## 📁 Estrutura dos arquivos
+
+```
+C:\Users\diogo\Documents\CLOUD\
+├── index.html         # Tela + estrutura
+├── style.css          # Visual (cores ARCOM, dark mode, partículas)
+├── app.js             # Lógica: Firebase Auth, roles, scoring, IA, CRUD
+├── produtos-seed.js   # 30 produtos de exemplo
+└── README.md          # Este arquivo
 ```
 
-Abra `http://localhost:8080`.
+## 🔮 Próximos passos (módulos futuros)
 
-## O motor de recomendação (pesos parametrizáveis)
+A estrutura foi pensada para crescer. Quando quiser, é só me chamar:
 
-Pesos padrão (ajustáveis em **Configurações**, sem alterar código):
+- [ ] Importação em massa via XLSX/CSV
+- [ ] Módulo de Pedidos (gerar pedido e enviar por WhatsApp)
+- [ ] Dashboard executivo com gráficos
+- [ ] Logs de auditoria (já contemplado no EXEC.txt)
+- [ ] Integração com Bling, Tiny, Omie, SAP
+- [ ] 100k+ produtos com paginação server-side
+- [ ] Cadastro de produtos via IA (colar descrição, IA sugere CNAE, UF, keywords)
 
-| Critério                    | Peso |
-|------------------------------|------|
-| Compatibilidade de CNAE       | 40%  |
-| Compatibilidade de Segmento   | 25%  |
-| Compatibilidade Regional      | 15%  |
-| Prioridade Comercial          | 10%  |
-| Margem                        | 5%   |
-| Produtos Relacionados         | 5%   |
+## 🆘 Problemas comuns
 
-Cada card de recomendação tem uma seção **"Rastreabilidade do score"**
-mostrando exatamente quanto cada critério contribuiu para a nota final —
-requisito explícito do briefing.
+**"Não consegue logar"**
+- Verifique email e senha. Apenas o Admin pré-definido pode fazer login automático.
+- Se for consultor, confirme que o Admin criou sua conta.
 
-## IA generativa
+**"Firebase: project not found"**
+- Você precisa substituir as credenciais de exemplo pelas suas. Veja seção "Firebase" acima.
 
-Por padrão, sem nenhuma chave configurada, o app já funciona de ponta a
-ponta usando um **gerador local por regras** (`gerarViaRegras` em
-`aiEngine.js`) — ele usa os mesmos critérios/score do motor para escrever
-motivo, benefício, argumento de venda, objeções e abordagem sugerida. Isso
-significa que a aplicação é utilizável imediatamente, sem custo de API.
+**"IA não responde nada"**
+- Vá em Configurações → Groq → cole a chave → **Testar conexão** (deve aparecer ✓)
 
-Para plugar um modelo de verdade (ex.: GPT), vá em **Configurações → IA
-Sales Specialist** e informe:
-- **Endpoint**: idealmente a URL do proxy em `functions/openaiProxy.js`
-  (a chave fica no servidor, nunca no navegador do consultor);
-- ou, para testes rápidos, o endpoint da OpenAI direto + sua chave (não
-  recomendado em produção, pois expõe a chave no client-side).
+**"Tela branca / erro JS"**
+- Abra o DevTools (F12) → aba **Console** → me mande o erro
 
-## Sobre login/Firebase
+---
 
-O briefing pede Firebase Authentication (Google + e-mail/senha) com
-permissões de Administrador/Consultor. `js/auth.js` implementa a mesma
-interface (`login`, `logout`, `isAdmin`, `getUsuarioAtual`) mas com uma
-sessão local (localStorage), porque uma integração Firebase real exige as
-credenciais do projeto do cliente. O arquivo tem, comentado, exatamente
-como trocar a implementação por Firebase Auth + Firestore sem precisar
-mexer em nenhum outro módulo — a interface pública não muda.
-
-O mesmo raciocínio vale para o banco: hoje tudo (produtos, histórico,
-feedback, configurações) fica em `localStorage`, mas cada módulo
-(`products.js`, `history.js`, `learningEngine.js`) já isola toda leitura/
-escrita em poucas funções — trocar por Firestore é reescrever só essas
-funções internas.
-
-## Importação de produtos
-
-Em **Produtos → Importar**, aceita `.json` (array de objetos no formato
-de `data/products.json`), `.csv` (cabeçalho na primeira linha) e `.xlsx`
-(primeira aba, cabeçalho na primeira linha) — os nomes de campo aceitam
-tanto `camelCase` (`cnaesCompativeis`) quanto `snake_case`
-(`cnaes_compativeis`). Listas (segmentos, CNAEs, estados, relacionados)
-podem vir separadas por `;` ou `|` dentro da célula.
-
-## Segurança implementada
-
-- Validação de CNPJ (dígitos verificadores) antes de qualquer consulta;
-- todo texto vindo de fora (nome de empresa, produto etc.) passa por
-  `escapeHtml()` antes de ir para o DOM — sem `innerHTML` de dado cru;
-- a resposta da IA é sempre validada contra a lista de produtos que
-  realmente existem no catálogo antes de ser exibida;
-- chave de IA, quando usada direto (sem proxy), fica só no
-  `localStorage` do navegador do próprio consultor — nunca é enviada a
-  nenhum lugar além do endpoint configurado.
-
-## Próximos passos sugeridos
-
-- Trocar `auth.js`/`products.js`/`history.js`/`learningEngine.js` por
-  Firebase (Authentication + Firestore) quando houver um projeto Firebase
-  dedicado — as interfaces já estão prontas para isso;
-- usar os dados do Learning Engine para treinar um modelo simples
-  (ex.: regressão logística) que substitua gradualmente os pesos manuais
-  do motor de regras, como previsto no briefing original.
+Feito com base no design system do CDA. ARCOM Design System © — estrutura e código novos.
